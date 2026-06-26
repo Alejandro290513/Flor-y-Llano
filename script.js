@@ -597,19 +597,37 @@ async function generatePDF() {
     doc.setTextColor(255, 255, 255);
     doc.text('Sistema de Control de Inventario', textX, y + 21);
 
-    // Report title - centered on the right side of banner
+    // Calculate left content end to avoid overlap with right side
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    const leftContentEnd = textX + doc.getTextWidth('Sistema de Control de Inventario') + 8;
+
+    // Reserve space for right side text
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     const rt = 'REPORTE DE VENTAS';
     const rtW = doc.getTextWidth(rt);
-    doc.text(rt, pw - m - 4 - rtW, y + 14);
+    const rtX = pw - m - 4 - rtW;
 
-    // Date under report title
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.5);
     const dt = `Generado: ${new Date().toLocaleDateString('es-CO')}`;
     const dtW = doc.getTextWidth(dt);
-    doc.text(dt, pw - m - 4 - dtW, y + 21);
+    const dtX = pw - m - 4 - dtW;
+
+    // Check if right content overlaps with left content
+    const rightStart = Math.min(rtX, dtX);
+    const bannerRightY = rightStart < leftContentEnd + 4 ? y + 24 : y + 14;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(255, 255, 255);
+    doc.text(rt, rtX, bannerRightY);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text(dt, dtX, bannerRightY + 7);
 
     y += 41;
 
