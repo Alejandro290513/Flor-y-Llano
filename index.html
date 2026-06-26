@@ -142,28 +142,31 @@
                             <h2>Promociones & Descuentos</h2>
                         </div>
                         <div class="card__body">
-                            <div class="form-row form-row--compact">
-                                <div class="form-group">
-                                    <label for="cantidadPromociones">
-                                        <i class="fa-solid fa-gift"></i> Cantidad de Promociones
+                            <div class="promo-variants">
+                                <div class="promo-variant">
+                                    <label for="promoBasic">
+                                        <i class="fa-solid fa-gift"></i> Promo Basica
                                     </label>
-                                    <input type="number" id="cantidadPromociones" min="0" placeholder="0" class="highlight-input">
+                                    <small class="variant-desc">1 Maranon + 1 Miel + 1 Jalea + 1 Polen</small>
+                                    <input type="number" id="promoBasic" min="0" placeholder="0" class="highlight-input">
                                 </div>
-                                <div class="form-group">
-                                    <label for="tipoPromocion">
-                                        <i class="fa-solid fa-gears"></i> Configuracion de Promo
+                                <div class="promo-variant">
+                                    <label for="promoDoubleJalea">
+                                        <i class="fa-solid fa-gift"></i> Doble Jalea
                                     </label>
-                                    <select id="tipoPromocion" class="form-select">
-                                        <option value="basic">Basica (1 Maranon + 1 Miel + 1 Jalea + 1 Polen)</option>
-                                        <option value="double_jalea">Doble Jalea (1 Maranon + 1 Miel + 2 Jalea + 0 Polen)</option>
-                                        <option value="double_polen">Doble Polen (1 Maranon + 1 Miel + 0 Jalea + 2 Polen)</option>
-                                    </select>
-                                    <small class="form-hint">
-                                        Precio por promo: <strong>$155.000</strong>
-                                    </small>
+                                    <small class="variant-desc">1 Maranon + 1 Miel + 2 Jalea + 0 Polen</small>
+                                    <input type="number" id="promoDoubleJalea" min="0" placeholder="0" class="highlight-input">
+                                </div>
+                                <div class="promo-variant">
+                                    <label for="promoDoublePolen">
+                                        <i class="fa-solid fa-gift"></i> Doble Polen
+                                    </label>
+                                    <small class="variant-desc">1 Maranon + 1 Miel + 0 Jalea + 2 Polen</small>
+                                    <input type="number" id="promoDoublePolen" min="0" placeholder="0" class="highlight-input">
                                 </div>
                             </div>
-                            <div class="form-row">
+                            <small class="form-hint">Precio por promo: <strong>$155.000</strong></small>
+                            <div class="form-row" style="margin-top:12px;">
                                 <div class="form-group">
                                     <label for="descuentosRealizados">
                                         <i class="fa-solid fa-percent"></i> Descuentos Realizados

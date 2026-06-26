@@ -88,8 +88,9 @@ const dom = {
     finMoringa: document.getElementById('finMoringa'),
 
     // Promociones & Descuentos
-    cantidadPromociones: document.getElementById('cantidadPromociones'),
-    tipoPromocion: document.getElementById('tipoPromocion'),
+    promoBasic: document.getElementById('promoBasic'),
+    promoDoubleJalea: document.getElementById('promoDoubleJalea'),
+    promoDoublePolen: document.getElementById('promoDoublePolen'),
     descuentosRealizados: document.getElementById('descuentosRealizados'),
 
     // Comisión
@@ -169,18 +170,36 @@ function getCommissionType() {
     return document.querySelector('input[name="tipoComision"]:checked').value;
 }
 
-function getPromoVariant() {
-    return dom.tipoPromocion.value;
-}
-
 function getPromoCounts() {
-    const variantKey = getPromoVariant();
-    return PROMO_VARIANTS[variantKey].count;
+    const variants = [
+        { key: 'basic', qty: parseNumber(dom.promoBasic) },
+        { key: 'double_jalea', qty: parseNumber(dom.promoDoubleJalea) },
+        { key: 'double_polen', qty: parseNumber(dom.promoDoublePolen) },
+    ];
+
+    const total = {};
+    productKeys.forEach((k) => total[k] = 0);
+
+    variants.forEach((v) => {
+        const count = PROMO_VARIANTS[v.key].count;
+        Object.entries(count).forEach(([prod, units]) => {
+            total[prod] += units * v.qty;
+        });
+    });
+
+    return total;
 }
 
-function getPromoProducts() {
-    const counts = getPromoCounts();
-    return Object.keys(counts).filter((k) => counts[k] > 0);
+function getPromosByVariant() {
+    return [
+        { key: 'basic', qty: parseNumber(dom.promoBasic) },
+        { key: 'double_jalea', qty: parseNumber(dom.promoDoubleJalea) },
+        { key: 'double_polen', qty: parseNumber(dom.promoDoublePolen) },
+    ];
+}
+
+function getTotalPromos() {
+    return getPromosByVariant().reduce((sum, v) => sum + v.qty, 0);
 }
 
 function getInventory(map) {
@@ -205,17 +224,20 @@ function getSold() {
     return { initial, final, sold };
 }
 
-function getEffectiveSold(sold, promos) {
+function getEffectiveSold(sold) {
     const counts = getPromoCounts();
     const effective = {};
     productKeys.forEach((key) => {
-        const promoUnits = (counts[key] || 0) * promos;
+        const promoUnits = counts[key] || 0;
         effective[key] = Math.max(0, sold[key] - promoUnits);
     });
     return effective;
 }
 
-function calculateTotals(effectiveSold, promos, discount) {
+function calculateTotals(effectiveSold, discount) {
+    const totalPromos = getTotalPromos();
+    const counts = getPromoCounts();
+
     let individualTotal = 0;
     let individualUnits = 0;
     productKeys.forEach((key) => {
@@ -223,9 +245,8 @@ function calculateTotals(effectiveSold, promos, discount) {
         individualUnits += effectiveSold[key];
     });
 
-    const promoTotal = promos * PROMO.price;
-    const counts = getPromoCounts();
-    const promoUnits = promos * Object.values(counts).reduce((a, b) => a + b, 0);
+    const promoTotal = totalPromos * PROMO.price;
+    const promoUnits = Object.values(counts).reduce((a, b) => a + b, 0);
     const grossTotal = individualTotal + promoTotal;
     const netTotal = grossTotal - discount;
     const totalUnits = individualUnits + promoUnits;
@@ -241,7 +262,7 @@ function calculateTotals(effectiveSold, promos, discount) {
         totalUnits,
         totalSoldForCommission,
         discount,
-        promos,
+        promos: totalPromos,
     };
 }
 
@@ -277,21 +298,32 @@ function validateInventories(initial, final) {
     return errors;
 }
 
-function validatePromos(sold, promos) {
+function validatePromos(sold) {
     const errors = [];
-    if (promos <= 0) return errors;
-
     const counts = getPromoCounts();
+    const totalPromos = getTotalPromos();
+    if (totalPromos <= 0) return errors;
+
+    let allOk = true;
     Object.entries(counts).forEach(([key, needed]) => {
         if (needed <= 0) return;
-        const required = needed * promos;
-        if (required > sold[key]) {
+        if (needed > sold[key]) {
+            allOk = false;
             errors.push({
                 key,
-                msg: `No hay suficientes unidades de ${PRODUCT_LABELS[key]} para ${promos} promociones. Se necesitan ${required}, disponible: ${sold[key]}.`,
+                msg: `No hay suficientes unidades de ${PRODUCT_LABELS[key]} para las promos. Se necesitan ${needed}, disponible: ${sold[key]}.`,
             });
         }
     });
+    if (allOk && totalPromos > 0) {
+        const byVariant = getPromosByVariant().filter(v => v.qty > 0);
+        const detail = byVariant.map(v => `${v.qty} ${PROMO_VARIANTS[v.key].name}`).join(', ');
+        errors.push({
+            key: 'ok',
+            msg: `${detail} — Total: ${formatCOP(totalPromos * PROMO.price)}`,
+            type: 'success',
+        });
+    }
     return errors;
 }
 
@@ -301,7 +333,6 @@ function validatePromos(sold, promos) {
 
 function renderAlerts() {
     const { initial, final, sold } = getSold();
-    const promos = parseNumber(dom.cantidadPromociones);
 
     // Inventory errors
     const invErrors = validateInventories(initial, final);
@@ -314,20 +345,23 @@ function renderAlerts() {
             </div>`;
     });
 
-    // Promo errors
-    const promoErrors = validatePromos(sold, promos);
+    // Promo alerts
+    const promoErrors = validatePromos(sold);
     dom.alertaPromociones.innerHTML = '';
     promoErrors.forEach((e) => {
+        const type = e.type === 'success' ? 'success' : 'warning';
+        const icon = e.type === 'success' ? 'fa-circle-check' : 'fa-triangle-exclamation';
         dom.alertaPromociones.innerHTML += `
-            <div class="alert alert--warning">
-                <i class="fa-solid fa-triangle-exclamation"></i>
+            <div class="alert alert--${type}">
+                <i class="fa-solid ${icon}"></i>
                 <span>${e.msg}</span>
             </div>`;
     });
 }
 
-function updateSummaryTable(effectiveSold, promos) {
+function updateSummaryTable(effectiveSold) {
     const tbody = dom.tablaProductosVendidos.querySelector('tbody');
+    const totalPromos = getTotalPromos();
 
     productKeys.forEach((key) => {
         const row = tbody.querySelector(`tr[data-producto="${key}"]`);
@@ -348,12 +382,12 @@ function updateSummaryTable(effectiveSold, promos) {
     dom.totalVentasIndividuales.textContent = formatCOP(totalValue);
 
     // Promo badge
-    if (promos > 0) {
-        const variantKey = getPromoVariant();
-        const variantName = PROMO_VARIANTS[variantKey].name;
+    if (totalPromos > 0) {
+        const byVariant = getPromosByVariant().filter(v => v.qty > 0);
+        const names = byVariant.map(v => `${v.qty} ${PROMO_VARIANTS[v.key].name}`).join(', ');
         dom.badgePromociones.style.display = 'flex';
-        dom.cantPromoBadge.textContent = `${promos} ${variantName}`;
-        dom.valorPromoBadge.textContent = formatCOP(promos * PROMO.price);
+        dom.cantPromoBadge.textContent = names;
+        dom.valorPromoBadge.textContent = formatCOP(totalPromos * PROMO.price);
     } else {
         dom.badgePromociones.style.display = 'none';
     }
@@ -361,12 +395,11 @@ function updateSummaryTable(effectiveSold, promos) {
 
 function updateTotals() {
     const { sold } = getSold();
-    const promos = parseNumber(dom.cantidadPromociones);
     const discount = parseCurrency(dom.descuentosRealizados);
     const type = getCommissionType();
 
-    const effectiveSold = getEffectiveSold(sold, promos);
-    const totals = calculateTotals(effectiveSold, promos, discount);
+    const effectiveSold = getEffectiveSold(sold);
+    const totals = calculateTotals(effectiveSold, discount);
     const commission = calculateCommission(type, totals);
 
     dom.totalBruto.textContent = formatCOP(totals.grossTotal);
@@ -380,9 +413,8 @@ function updateTotals() {
 function updateAll() {
     renderAlerts();
     const { sold } = getSold();
-    const promos = parseNumber(dom.cantidadPromociones);
-    const effectiveSold = getEffectiveSold(sold, promos);
-    updateSummaryTable(effectiveSold, promos);
+    const effectiveSold = getEffectiveSold(sold);
+    updateSummaryTable(effectiveSold);
     updateTotals();
 }
 
@@ -421,11 +453,12 @@ async function generatePDF() {
     let y = m;
 
     const { initial, final, sold } = getSold();
-    const promos = parseNumber(dom.cantidadPromociones);
+    const totalPromos = getTotalPromos();
+    const promosByVariant = getPromosByVariant().filter(v => v.qty > 0);
     const discount = parseCurrency(dom.descuentosRealizados);
     const type = getCommissionType();
-    const effectiveSold = getEffectiveSold(sold, promos);
-    const totals = calculateTotals(effectiveSold, promos, discount);
+    const effectiveSold = getEffectiveSold(sold);
+    const totals = calculateTotals(effectiveSold, discount);
     const commission = calculateCommission(type, totals);
     const name = dom.nombreVendedor.value.trim() || '(No especificado)';
     const place = dom.lugarTrabajo.value.trim() || '(No especificado)';
@@ -634,12 +667,10 @@ async function generatePDF() {
         formatCOP(effectiveSold[key] * PRICES[key]),
     ]);
 
-    // Add promo row if applicable
-    if (promos > 0) {
-        const vKey = getPromoVariant();
-        const vName = PROMO_VARIANTS[vKey].name;
-        prodRows.push([vName, String(promos), formatCOP(PROMO.price), formatCOP(promos * PROMO.price)]);
-    }
+    // Add promo rows if applicable
+    promosByVariant.forEach((v) => {
+        prodRows.push([PROMO_VARIANTS[v.key].name, String(v.qty), formatCOP(PROMO.price), formatCOP(v.qty * PROMO.price)]);
+    });
 
     y = drawTable(m, y, prodH, prodRows, prodW, {
         rowNumbers: null,
@@ -652,8 +683,9 @@ async function generatePDF() {
     doc.text('RESUMEN', m, y);
     y += 5;
 
+    const promoDetail = promosByVariant.map(v => `(${PROMO_VARIANTS[v.key].name} x${v.qty})`).join(' + ');
     const sumRows = [
-        ['Promociones', `${promos} x ${formatCOP(PROMO.price)} (${PROMO_VARIANTS[getPromoVariant()].name})`, formatCOP(totals.promoTotal)],
+        ['Promociones', promoDetail, formatCOP(totals.promoTotal)],
         ['Descuentos', '', `- ${formatCOP(totals.discount)}`],
         ['Total Bruto', '', formatCOP(totals.grossTotal)],
         ['Total Neto', '', formatCOP(totals.netTotal)],
@@ -716,11 +748,12 @@ async function generatePDF() {
 
 function sendToWhatsApp() {
     const { sold } = getSold();
-    const promos = parseNumber(dom.cantidadPromociones);
+    const totalPromos = getTotalPromos();
+    const promosByVariant = getPromosByVariant().filter(v => v.qty > 0);
     const discount = parseCurrency(dom.descuentosRealizados);
     const type = getCommissionType();
-    const effectiveSold = getEffectiveSold(sold, promos);
-    const totals = calculateTotals(effectiveSold, promos, discount);
+    const effectiveSold = getEffectiveSold(sold);
+    const totals = calculateTotals(effectiveSold, discount);
     const commission = calculateCommission(type, totals);
     const name = dom.nombreVendedor.value.trim() || '(No especificado)';
     const place = dom.lugarTrabajo.value.trim() || '(No especificado)';
@@ -737,7 +770,10 @@ function sendToWhatsApp() {
     productKeys.forEach((key) => {
         msg += `- ${PRODUCT_LABELS[key]}: ${effectiveSold[key]}\n`;
     });
-    msg += `\nPromociones: ${promos} (${PROMO_VARIANTS[getPromoVariant()].name})\n`;
+    msg += `\nPromociones:\n`;
+    promosByVariant.forEach((v) => {
+        msg += `  ${PROMO_VARIANTS[v.key].name}: ${v.qty}\n`;
+    });
     msg += `Total Bruto: ${formatCOP(totals.grossTotal)}\n`;
     msg += `Descuentos: -${formatCOP(totals.discount)}\n`;
     msg += `Total Neto: ${formatCOP(totals.netTotal)}\n`;
@@ -764,15 +800,15 @@ function attachEvents() {
     const allInputs = [
         ...Object.values(iniInputs),
         ...Object.values(finInputs),
-        dom.cantidadPromociones,
+        dom.promoBasic,
+        dom.promoDoubleJalea,
+        dom.promoDoublePolen,
         dom.descuentosRealizados,
     ];
 
     allInputs.forEach((input) => {
         input.addEventListener('input', updateAll);
     });
-
-    dom.tipoPromocion.addEventListener('change', updateAll);
 
     document.querySelectorAll('input[name="tipoComision"]').forEach((radio) => {
         radio.addEventListener('change', updateAll);

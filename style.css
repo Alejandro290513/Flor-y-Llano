@@ -216,6 +216,51 @@ input, button, select, textarea { font-family: var(--font); }
 
 .form-group input::placeholder { color: var(--color-text-muted); }
 
+.promo-variants {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+}
+
+.promo-variant {
+    background: var(--color-golden-light);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.promo-variant label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--color-primary-dark);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 0;
+}
+
+.promo-variant .variant-desc {
+    font-size: 0.65rem;
+    color: var(--color-text-light);
+    line-height: 1.3;
+}
+
+.promo-variant input {
+    margin-top: 4px;
+    text-align: center;
+    font-weight: 700 !important;
+    font-size: 1rem !important;
+}
+
+@media (max-width: 768px) {
+    .promo-variants {
+        grid-template-columns: 1fr;
+    }
+}
+
 .form-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
