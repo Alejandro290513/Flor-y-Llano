@@ -183,7 +183,8 @@ input, button, select, textarea { font-family: var(--font); }
 
 .form-group input[type="text"],
 .form-group input[type="number"],
-.form-group input[type="date"] {
+.form-group input[type="date"],
+.form-group select {
     width: 100%;
     padding: 10px 12px;
     border: 1.5px solid var(--color-border);
@@ -195,7 +196,20 @@ input, button, select, textarea { font-family: var(--font); }
     outline: none;
 }
 
-.form-group input:focus {
+.form-group select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%236D4C41' d='M1.4 0L6 4.6 10.6 0 12 1.4 6 7.4 0 1.4z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.form-group input:focus,
+.form-group select:focus {
     border-color: var(--color-primary);
     box-shadow: 0 0 0 3px rgba(212, 160, 23, 0.15);
 }

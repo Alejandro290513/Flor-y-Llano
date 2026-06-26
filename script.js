@@ -19,6 +19,36 @@ const PROMO = {
     products: ['maranon', 'miel', 'jalea', 'polen'],
 };
 
+const PROMO_VARIANTS = {
+    basic: {
+        name: 'Promo Básica',
+        count: {
+            maranon: 1,
+            miel: 1,
+            jalea: 1,
+            polen: 1,
+        },
+    },
+    double_jalea: {
+        name: 'Promo Con Doble Jalea',
+        count: {
+            maranon: 1,
+            miel: 1,
+            jalea: 2,
+            polen: 0,
+        },
+    },
+    double_polen: {
+        name: 'Promo Con Doble Polen',
+        count: {
+            maranon: 1,
+            miel: 1,
+            jalea: 0,
+            polen: 2,
+        },
+    },
+};
+
 const COMMISSION = {
     option1PerUnit: 4000,
     option1Fixed: 40000,
@@ -59,6 +89,7 @@ const dom = {
 
     // Promociones & Descuentos
     cantidadPromociones: document.getElementById('cantidadPromociones'),
+    tipoPromocion: document.getElementById('tipoPromocion'),
     descuentosRealizados: document.getElementById('descuentosRealizados'),
 
     // Comisión
@@ -138,6 +169,20 @@ function getCommissionType() {
     return document.querySelector('input[name="tipoComision"]:checked').value;
 }
 
+function getPromoVariant() {
+    return dom.tipoPromocion.value;
+}
+
+function getPromoCounts() {
+    const variantKey = getPromoVariant();
+    return PROMO_VARIANTS[variantKey].count;
+}
+
+function getPromoProducts() {
+    const counts = getPromoCounts();
+    return Object.keys(counts).filter((k) => counts[k] > 0);
+}
+
 function getInventory(map) {
     const result = {};
     productKeys.forEach((key) => {
@@ -161,13 +206,11 @@ function getSold() {
 }
 
 function getEffectiveSold(sold, promos) {
+    const counts = getPromoCounts();
     const effective = {};
     productKeys.forEach((key) => {
-        if (PROMO.products.includes(key)) {
-            effective[key] = Math.max(0, sold[key] - promos);
-        } else {
-            effective[key] = sold[key];
-        }
+        const promoUnits = (counts[key] || 0) * promos;
+        effective[key] = Math.max(0, sold[key] - promoUnits);
     });
     return effective;
 }
@@ -181,7 +224,8 @@ function calculateTotals(effectiveSold, promos, discount) {
     });
 
     const promoTotal = promos * PROMO.price;
-    const promoUnits = promos * PROMO.products.length;
+    const counts = getPromoCounts();
+    const promoUnits = promos * Object.values(counts).reduce((a, b) => a + b, 0);
     const grossTotal = individualTotal + promoTotal;
     const netTotal = grossTotal - discount;
     const totalUnits = individualUnits + promoUnits;
@@ -237,11 +281,14 @@ function validatePromos(sold, promos) {
     const errors = [];
     if (promos <= 0) return errors;
 
-    PROMO.products.forEach((key) => {
-        if (promos > sold[key]) {
+    const counts = getPromoCounts();
+    Object.entries(counts).forEach(([key, needed]) => {
+        if (needed <= 0) return;
+        const required = needed * promos;
+        if (required > sold[key]) {
             errors.push({
                 key,
-                msg: `No hay suficientes unidades de ${PRODUCT_LABELS[key]} para ${promos} promociones. Disponible: ${sold[key]}.`,
+                msg: `No hay suficientes unidades de ${PRODUCT_LABELS[key]} para ${promos} promociones. Se necesitan ${required}, disponible: ${sold[key]}.`,
             });
         }
     });
@@ -302,8 +349,10 @@ function updateSummaryTable(effectiveSold, promos) {
 
     // Promo badge
     if (promos > 0) {
+        const variantKey = getPromoVariant();
+        const variantName = PROMO_VARIANTS[variantKey].name;
         dom.badgePromociones.style.display = 'flex';
-        dom.cantPromoBadge.textContent = promos;
+        dom.cantPromoBadge.textContent = `${promos} ${variantName}`;
         dom.valorPromoBadge.textContent = formatCOP(promos * PROMO.price);
     } else {
         dom.badgePromociones.style.display = 'none';
@@ -587,7 +636,9 @@ async function generatePDF() {
 
     // Add promo row if applicable
     if (promos > 0) {
-        prodRows.push(['PROMOCION', String(promos), formatCOP(PROMO.price), formatCOP(promos * PROMO.price)]);
+        const vKey = getPromoVariant();
+        const vName = PROMO_VARIANTS[vKey].name;
+        prodRows.push([vName, String(promos), formatCOP(PROMO.price), formatCOP(promos * PROMO.price)]);
     }
 
     y = drawTable(m, y, prodH, prodRows, prodW, {
@@ -602,7 +653,7 @@ async function generatePDF() {
     y += 5;
 
     const sumRows = [
-        ['Promociones', `${promos} x ${formatCOP(PROMO.price)}`, formatCOP(totals.promoTotal)],
+        ['Promociones', `${promos} x ${formatCOP(PROMO.price)} (${PROMO_VARIANTS[getPromoVariant()].name})`, formatCOP(totals.promoTotal)],
         ['Descuentos', '', `- ${formatCOP(totals.discount)}`],
         ['Total Bruto', '', formatCOP(totals.grossTotal)],
         ['Total Neto', '', formatCOP(totals.netTotal)],
@@ -686,7 +737,7 @@ function sendToWhatsApp() {
     productKeys.forEach((key) => {
         msg += `- ${PRODUCT_LABELS[key]}: ${effectiveSold[key]}\n`;
     });
-    msg += `\nPromociones: ${promos}\n`;
+    msg += `\nPromociones: ${promos} (${PROMO_VARIANTS[getPromoVariant()].name})\n`;
     msg += `Total Bruto: ${formatCOP(totals.grossTotal)}\n`;
     msg += `Descuentos: -${formatCOP(totals.discount)}\n`;
     msg += `Total Neto: ${formatCOP(totals.netTotal)}\n`;
@@ -720,6 +771,8 @@ function attachEvents() {
     allInputs.forEach((input) => {
         input.addEventListener('input', updateAll);
     });
+
+    dom.tipoPromocion.addEventListener('change', updateAll);
 
     document.querySelectorAll('input[name="tipoComision"]').forEach((radio) => {
         radio.addEventListener('change', updateAll);
