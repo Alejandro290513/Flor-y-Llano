@@ -489,41 +489,47 @@ async function generatePDF() {
 
     // ---- HEADER ----
     // Golden banner at top
-    filledRect(m, y, cw, 32, gold);
-    doc.setFillColor(goldD[0], goldD[1], goldD[2]);
+    filledRect(m, y, cw, 35, gold);
 
     // Logo
     const logoData = await getLogoDataUrl();
+    const logoW = 22;
+    const logoH = 22;
+    const logoX = m + 6;
+    const logoY = y + 6.5;
     if (logoData) {
-        doc.addImage(logoData, 'PNG', m + 4, y + 4, 24, 24);
+        doc.addImage(logoData, 'PNG', logoX, logoY, logoW, logoH);
     }
 
-    // Title on banner
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.setTextColor(255, 255, 255);
-    const lx = logoData ? m + 32 : m + 4;
-    doc.text('FLOR Y LLANO', lx, y + 12);
+    const textX = logoData ? logoX + logoW + 8 : m + 6;
 
+    // Company name
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(15);
+    doc.setTextColor(255, 255, 255);
+    doc.text('FLOR Y LLANO', textX, y + 14);
+
+    // Subtitle
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
+    doc.setFontSize(7);
     doc.setTextColor(255, 255, 255);
-    doc.text('Sistema de Control de Inventario', lx, y + 19);
+    doc.text('Sistema de Control de Inventario', textX, y + 21);
 
-    // Report type badge right side
+    // Report title - centered on the right side of banner
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.setTextColor(255, 255, 255);
-    const rt = 'Reporte de Ventas';
-    doc.text(rt, pw - m - doc.getTextWidth(rt), y + 12);
+    doc.setFontSize(11);
+    const rt = 'REPORTE DE VENTAS';
+    const rtW = doc.getTextWidth(rt);
+    doc.text(rt, pw - m - 4 - rtW, y + 14);
 
+    // Date under report title
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.5);
-    doc.setTextColor(255, 255, 255);
     const dt = `Generado: ${new Date().toLocaleDateString('es-CO')}`;
-    doc.text(dt, pw - m - doc.getTextWidth(dt), y + 19);
+    const dtW = doc.getTextWidth(dt);
+    doc.text(dt, pw - m - 4 - dtW, y + 21);
 
-    y += 38;
+    y += 41;
 
     // ---- VENDEDOR INFO CARD ----
     filledRect(m, y, cw, 18, bgLight);
