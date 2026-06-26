@@ -642,12 +642,13 @@ async function generatePDF() {
     doc.setTextColor(goldD[0], goldD[1], goldD[2]);
     doc.text('DATOS DEL VENDEDOR', m + 4, y + 5);
 
+    const vendorColW = (cw - 12) / 3;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(dark[0], dark[1], dark[2]);
     doc.text(`Nombre: ${name}`, m + 4, y + 12);
-    doc.text(`Lugar: ${place}`, m + 90, y + 12);
-    doc.text(`Fecha: ${dateFormatted}`, m + 160, y + 12);
+    doc.text(`Lugar: ${place}`, m + 4 + vendorColW, y + 12);
+    doc.text(`Fecha: ${dateFormatted}`, m + 4 + vendorColW * 2, y + 12);
 
     y += 24;
 
